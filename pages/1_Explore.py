@@ -2,6 +2,14 @@ import streamlit as st
 from utils.data_utils import get_competitors, load_competitor_data
 import pandas as pd
 import plotly.express as px
+import logging
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 st.set_page_config(
     page_title="Explore Competitors", 
@@ -13,26 +21,34 @@ st.title("Explore Competitor Reviews")
 
 # Get competitors list
 competitors = get_competitors()
+logger.info(f"Retrieved {len(competitors)} competitors")
 
 if not competitors:
+    logger.warning("No competitor data available")
     st.info("No competitor data available. Add competitors using the 'Add Competitors' page.")
 else:
     # Competitor selection
     selected_competitors = st.multiselect("Select Competitors", competitors)
+    logger.info(f"Selected competitors: {selected_competitors}")
     
     if selected_competitors:
         # Create a container for all competitor data
         all_data = []
         
         for competitor in selected_competitors:
+            logger.info(f"Loading data for competitor: {competitor}")
             df = load_competitor_data(competitor)
             if df is not None:
                 df['competitor'] = competitor  # Add competitor column
                 all_data.append(df)
+                logger.info(f"Loaded {len(df)} reviews for {competitor}")
+            else:
+                logger.error(f"Failed to load data for {competitor}")
         
         if all_data:
             # Combine all competitor data
             combined_df = pd.concat(all_data, ignore_index=True)
+            logger.info(f"Combined data shape: {combined_df.shape}")
             
             # Convert date column to datetime if not already
             combined_df['date'] = pd.to_datetime(combined_df['date'])
@@ -71,6 +87,7 @@ else:
                 
                 # Apply tag filters
                 if selected_shapes or selected_styles or selected_types:
+                    logger.info(f"Applying tag filters - Shapes: {selected_shapes}, Styles: {selected_styles}, Types: {selected_types}")
                     mask = pd.Series(True, index=combined_df.index)
                     
                     if selected_shapes:
@@ -95,10 +112,14 @@ else:
                         mask &= type_mask
                     
                     combined_df = combined_df[mask]
+                    logger.info(f"Data shape after tag filtering: {combined_df.shape}")
             
             # Date range selector
             min_date = combined_df['date'].min()
             max_date = combined_df['date'].max()
+
+            logger.info(f"Min date: {min_date}, Max date: {max_date}")
+            logger.info(f"Min date type: {type(min_date)}, Max date type: {type(max_date)}")
             
             # Calculate default date range (last 4 months)
             default_end_date = max_date
@@ -120,6 +141,7 @@ else:
                 start_date, end_date = date_range
                 mask = (combined_df['date'].dt.date >= start_date) & (combined_df['date'].dt.date <= end_date)
                 filtered_df = combined_df[mask]
+                logger.info(f"Filtered data shape after date range: {filtered_df.shape}")
             else:
                 filtered_df = combined_df
             
@@ -251,4 +273,5 @@ else:
                     st.plotly_chart(fig_type, use_container_width=True)
 
         else:
+            logger.error(f"Error loading data for {selected_competitors}")
             st.error(f"Error loading data for {selected_competitors}") 

@@ -6,12 +6,23 @@ import random
 from datetime import datetime
 from tqdm import tqdm
 import os
+import logging
 
 TAGS = {
     'shape': ['oval', 'round', 'marquise', 'princess', 'cushion', 'emerald', 'pear', 'radiant', 'asscher', 'heart', 'trillion', 'baguette'],
     'style': ['engagement', 'wedding', 'bridal', 'eternity', 'halo', 'solitaire', 'anniversary', 'proposal'],
     'type': ['ring', 'band', 'earrings', 'huggies', 'hoop']
 }
+
+# Add at the beginning of the file, after imports
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('etsy_scraper.log'),
+        logging.StreamHandler()
+    ]
+)
 
 def scrape_etsy_reviews(shop_name, number_of_pages=1000, page_size=10, pause_seconds=0, progress_bar=None):
     USER_AGENTS = [
@@ -105,15 +116,28 @@ def scrape_etsy_reviews(shop_name, number_of_pages=1000, page_size=10, pause_sec
             try:
                 # Try the original format first
                 if date is None:
-                    date = "Unknown"  # or some default date
+                    logging.warning(f"Date is None for review {review_id}, using default date")
+                    date = "Unknown"
                 parsed_date = datetime.strptime(date, "%d %b, %Y")
+                logging.debug(f"Successfully parsed date '{date}' with format '%d %b, %Y'")
             except ValueError:
                 try:
                     # Try the alternative format (Month Day, Year)
                     parsed_date = datetime.strptime(date, "%B %d, %Y")
+                    logging.debug(f"Successfully parsed date '{date}' with format '%B %d, %Y'")
                 except ValueError:
-                    # If both formats fail, use a default date or skip the review
-                    parsed_date = datetime.now()  # or handle the error differently
+                    try:
+                        # Try YYYY-MM-DD format
+                        parsed_date = datetime.strptime(date, "%Y-%m-%d")
+                        logging.debug(f"Successfully parsed date '{date}' with format '%Y-%m-%d'")
+                    except ValueError:
+                        try:
+                            # Try MM/DD/YYYY format
+                            parsed_date = datetime.strptime(date, "%m/%d/%Y")
+                            logging.debug(f"Successfully parsed date '{date}' with format '%m/%d/%Y'")
+                        except ValueError:
+                            logging.error(f"Failed to parse date '{date}' for review {review_id}, using default date")
+                            parsed_date = datetime(1999, 1, 1, 0, 0, 0)
 
             # Get tags for the listing
             tags = get_tags_from_title(listing_title)
