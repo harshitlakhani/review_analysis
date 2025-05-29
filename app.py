@@ -102,8 +102,15 @@ def scrape_etsy_reviews(shop_name, number_of_pages=1000, page_size=10, pause_sec
 
             img = li.find('img')
             avatar_url = img.get('src') if img else None
-            date = date.replace("Sept", "Sep")
-            parsed_date = datetime.strptime(date, "%d %b, %Y") if date else None
+            try:
+                # Try the original format first
+                parsed_date = datetime.strptime(date, "%d %b, %Y")
+            except ValueError:
+                try:
+                    # Try the alternative format (Month Day, Year)
+                    parsed_date = datetime.strptime(date, "%b %d, %Y")
+                except ValueError:
+                    parsed_date = None
 
             # Get tags for the listing
             tags = get_tags_from_title(listing_title)
