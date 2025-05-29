@@ -104,6 +104,10 @@ else:
             default_end_date = max_date
             default_start_date = max_date - pd.DateOffset(months=4)
             
+            # Ensure default_start_date is not before min_date
+            if default_start_date < min_date:
+                default_start_date = min_date
+            
             date_range = st.date_input(
                 "Select Date Range",
                 value=(default_start_date.date(), default_end_date.date()),
